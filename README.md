@@ -2,14 +2,53 @@
 This repository contains a collection of my professional projects, which I have created to demonstrate my skills and experience in software development.
 
 # Python Software for managing a vegan product store.
+Certainly, here's the revised project summary for the "Vegan Store Management Software" project in Python without the example interactions:
 
-    This project consists of developing software for managing a vegan product store. The software must have the following features:
+Title: Vegan Store Management Software in Python
 
-        Register new products, with name, quantity, selling price, and purchase price.
-        List all products present.
-        Register sales made.
-        Show gross and net profits.
-        Show a help menu with all available commands.
+Description:
+
+Welcome to the "Vegan Store Management Software" project, a text-based application for efficiently managing a vegan product store. This software provides a range of features to streamline store operations:
+
+Key Features:
+
+    Product Management: Easily register new products with details such as name, quantity, purchase price, and selling price.
+
+    Product Listing: View a comprehensive list of all products in the store.
+
+    Sales Registration: Record sales transactions, keeping track of product quantities sold.
+
+    Profit Calculation: Calculate both gross and net profits, accounting for product costs.
+
+    Command Menu: An interactive command-line interface makes it simple to interact with the software.
+
+Project Guidelines:
+
+    Code Structure: The project emphasizes good code organization, including the use of functions to encapsulate different functionalities.
+
+    Data Structures: Thoughtful selection of data structures such as lists, dictionaries, or combinations thereof, to efficiently manage product data.
+
+    Persistence: The program ensures data persistence, retaining user input between program runs, by utilizing a text file with customizable encoding for data storage.
+
+    Input Validation: Robust input validation is in place, guaranteeing that numerical inputs are indeed numbers, and handling invalid cases with meaningful exceptions and error messages.
+
+    Stock Verification: During purchases, the software checks whether the purchased products are in stock and provides an error message if not available.
+
+    Stock Updates: When adding products to the stock, the software checks if the product is already in stock. If so, it updates the existing quantity without the need to re-enter purchase and selling prices.
+
+    Profit Calculation: The software calculates gross profit as the total sales revenue and net profit as gross profit minus the cost of purchased products.
+
+Project Reminders:
+
+    It's essential to strictly adhere to project specifications to meet the desired outcomes and produce results as specified in the project guidelines.
+
+    Ensure that each function performs a single, specific task. Divide long functions into smaller, more concise ones if necessary.
+
+    Comments should be used to describe functions, classes, and methods.
+
+    Use English for variable, function, and method names, following snake_case for variables and camelCase for class names. Maintain a consistent use of the English language throughout the project.
+
+This project is a valuable exercise in building a functional, persistent, and user-friendly application in Python for managing a vegan product store. Happy coding!
 
 # Descriptive Statistical Analysis and Visualization of Texas Real Estate Sales Data Using R.
 Title: Exploring Texas Real Estate Sales Data with Descriptive Statistics and Data Visualization in R
