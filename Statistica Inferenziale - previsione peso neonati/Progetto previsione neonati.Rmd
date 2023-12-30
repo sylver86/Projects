@@ -1,0 +1,618 @@
+---
+title: "Progetto Statistica Inferenziale"
+author: "Eugenio Pasqua"
+date: "2023-12-09"
+output:
+  pdf_document: 
+    highlight: zenburn
+  html_document: default
+  word_document: 
+    highlight: tango
+---
+
+# Un modello Statistico per la previsione del peso dei neonati<br><br>
+
+Questo progetto si propone di esplorare il dataset riguardante diverse variabili legate alla nascita di neonati e di determinare quali di queste potrebbero essere correlate con il peso del neonato alla nascita.<br>
+L'obiettivo principale è comprendere e stabilire le relazioni esistenti tra le variabili come Gestazione, sesso, misure antropometriche come Cranio e Lunghezza, peso del neonato e caratterisiche della madre. La variabile peso del neonato sarà la nostra variabile target su cui effettuare l'analisi e le previsioni.<br><br>
+<br>
+
+### 1 - Importiamo il dataset “neonati.csv” <br><br>
+
+Procediamo con l'importazione del dataset "neonati.csv":<br>
+
+```{r , include=TRUE}
+dati_sorgenti <- read.csv("neonati.csv")
+dati_sorgenti <- dati_sorgenti[!is.na(dati_sorgenti$Anni.madre) 
+                               & dati_sorgenti$Anni.madre != 0, ]
+head(dati_sorgenti,5)
+```
+<br><br>
+
+### 2 - Descrizione del dataset, sua composizione, tipo di variabili e obiettivo dello studio:<br><br>
+
+Il dataset raccoglie dati relativi alle madri e alle caratteristiche dei neonati al momento del parto. Di seguito sono elencate le variabili associate alle madri:<br><br>
+
+- Età della madre<br>
+- Numero di gravidanze precedenti <br>
+- Fumo durante la gravidanza della madre <br>
+- Durata della gestazione in settimane <br>
+<br>
+Le seguenti variabili sono invece riferite alle misurazioni antropometriche dei neonati e ad altri dettagli relativi al parto:
+<br><br>
+- Peso del neonato (espresso in grammi)<br>
+- Lunghezza del neonato (espressa in millimetri)<br>
+- Diametro del cranio del neonato (espresso in millimetri)<br>
+- Tipo di parto (naturale o cesareo)<br>
+- Ospedale in cui si è svolto il parto<br>
+- Sesso del neonato<br><br>
+  
+
+<br>
+
+### 3 - Indagine sulle variabili effettuando una breve analisi descrittiva, utilizzando indici e strumenti grafici:<br><br>
+
+Effettuiamo un riepilogo delle variabili per esaminare le misure di posizione del dataset, offrendo una descrizione statistica di ogni variabile presente nel dataset appena importato:<br>
+<br>
+
+```{r , include=TRUE}
+summary(dati_sorgenti)
+```
+<br>
+L'età media delle madri si aggira intorno ai 28 anni, con la maggior parte delle osservazioni concentrata tra i 25 e i 32 anni. Ora procediamo a esaminare la distribuzione di frequenza delle osservazioni suddividendo il campione in cluster e contando il numero di madri in ciascun cluster di età:<br>
+
+```{r , include=TRUE}
+dati_sorgenti$Anni.madre_classi <- cut(dati_sorgenti$Anni.madre,
+                                       breaks = c(0,20,25,30,35,40,45,50,60))
+library(ggplot2)
+ggplot(data = dati_sorgenti)+
+  geom_bar(aes(x=Anni.madre_classi),
+           stat="count",
+           col="black",
+           fill="blue")+
+  labs(title="Distribuzione anni madri",x="classi di eta",y="Qta madri")
+```
+<br><br>
+Esaminiamo ora la variabile relativa al numero di gravidanze. In media, ogni madre ha avuto circa una gravidanza, con un periodo di gestazione mediamente compreso tra le 38 e le 40 settimane.
+<br><br>
+Passando al campione di madri, esaminiamo la distribuzione della variabile "Fumatrici" e come questa si distribuisce nel totale delle osservazioni presenti nel dataset.<br><br>
+```{r , include=TRUE}
+madri_fumatrici <- table(dati_sorgenti$Fumatrici)
+madri_fumatrici
+```
+
+<br>
+Nel dataset esaminato, la presenza di madri fumatrici è estremamente rara, con la maggior parte delle madri che non fuma.
+<br><br>
+Per quanto riguarda le caratteristiche dei neonati, il peso medio è di circa 3,2 kg, con la maggior parte dei neonati che si aggira tra 2,9 kg e 3,6 kg.
+<br>
+La lunghezza media dei neonati varia da 480 mm a 510 mm, mentre le misurazioni del cranio oscillano principalmente tra 330 e 350, con una media di circa 340.
+<br><br>
+Analizziamo adesso la distribuzione dei parti osservati tra parto naturale e parto cesareo nel dataset:<br><br>
+
+```{r setup, include=TRUE}
+tipologie_parto <- table(dati_sorgenti$Tipo.parto)
+tipologie_parto
+```
+<br>
+Come possiamo vedere piu della metà delle osservazioni sono parti "naturali".<br><br>
+Vediamo ora il sesso dei neonati come si distribuisce sul campione descritto dal dataset:<br>
+
+```{r , include=TRUE}
+sesso_neonati <- table(dati_sorgenti$Sesso)
+sesso_neonati
+```
+
+<br> 
+Dai dati, sembra che la distribuzione sia abbastanza uniforme in questo caso.
+<br><br>
+Adesso infine diamo un'occhiata alla variabile "Ospedale" per comprendere come sono distribuiti i dati all'interno del dataset:<br>
+
+```{r , include=TRUE}
+tipo_osp <- table(dati_sorgenti$Ospedale)
+tipo_osp
+```
+
+<br>
+Da quanto riportato sembra che su tutti i parti registrati, i 3 ospedali abbiano una distribuzione equilibrata.<br><br>
+<br><br>
+
+### 4 - Saggiamo l'ipotesi che la media del "peso" e della "lunghezza" del campione di neonati del dataset siano significativamente uguali a quello della popolazione:<br><br>
+
+Dopo aver effettuato una ricerca online, ho trovato una media approssimativa di 3,3 kg e 50 cm per neonati al momento della nascita.
+
+Adesso, procederemo con il test t per valutare se il peso registrato nel nostro campione è significativamente simile a quello della popolazione generale. <br>
+Questo ci aiuterà a determinare se il nostro campione è rappresentativo per l'analisi dell'intera popolazione:<br>
+
+
+```{r , include=TRUE}
+t.test(dati_sorgenti$Peso,mu=3300,conf.level=0.95, alternative="two.sided")
+```
+
+<br>
+Dalle evidenze sopra riportate si evince che il p-value non è inferiore a livello di significatività prescelto  pertanto non possiamo rifiutare l'ipotesi nulla quindi sul peso il campione risulterebbe rappresentativo per la popolazione. <br>
+
+Andiamo ora a saggiare l'ipotesi della lunghezza : abbiamo detto che dovremmo avere una media di circa 50cm vediamo se è vero:
+<br>
+
+```{r , include=TRUE}
+t.test(dati_sorgenti$Lunghezza,mu=500,conf.level=0.95)
+```
+<br>
+Il test t ha restituito un p-value molto basso, indicando che la lunghezza potrebbe differire dalla media della popolazione, poiché il p-value è inferiore al livello di significatività scelto.<br>
+Tuttavia, considerando la mediana, che si attesta intorno al valore 500, potremmo accettare questa misura come un indicatore sufficiente.<br><br><br><br>
+
+
+### 5 - Sempre per il "peso" e "lunghezza" o eventualmente per altre per cui ha senso farlo procedo a verificare le differenze significative tra i due sessi:<br><br>
+
+Procediamo ora a verificare se i parametri di peso e lunghezza in riferimento al sesso dei neonati rilevano differenze significative.<br>
+Per far questo utilizziamo l'approccio dei boxplot condizionati:<br>
+
+```{r , include=TRUE}
+attach(dati_sorgenti)
+boxplot(Peso~Sesso)
+```
+
+<br>
+Come mostrato dal grafico sopra riportato, i neonati maschi tendono ad assumere un peso leggermente superiore a quello delle femmine.<br><br>
+
+Riesaminiamolo utilizzando il t-test per determinare se esiste una differenza statistica significativa.<br>
+Verificheremo quindi l'ipotesi nulla che il peso medio dei neonati maschi sia uguale a quello delle femmine:<br>
+
+```{r , include=TRUE}
+dati_maschi <- subset(dati_sorgenti, Sesso=='M')
+dati_femmine <- subset(dati_sorgenti, Sesso=='F')
+
+# Mi calcolo il peso medio delle femmine
+media_femmine <- mean(dati_femmine$Peso)
+t.test(dati_maschi$Peso,mu=media_femmine,conf.level=0.95)
+```
+<br>
+Il p-value ottenuto dal t-test è inferiore al livello di significatività, quindi respingiamo l'ipotesi nulla. Questo fornisce una forte evidenza a sostegno dell'ipotesi che i neonati maschi e femmine abbiano pesi differenti.<br>
+
+Vediamo in termini di lunghezza e rifacciamo la medesima analisi applicata per tale variabile:<br>
+
+```{r , include=TRUE}
+boxplot(Lunghezza~Sesso)
+```
+<br>
+Anche la lunghezza nei maschi sembra essere leggermente superiore a quella delle femmine infatti il boxplot "M" si pone verticalmente piu in alto rispetto a quello "F".<br>
+Proviamolo con il t-test :<br>
+
+
+```{r , include=TRUE}
+dati_maschi <- subset(dati_sorgenti, Sesso=='M')
+dati_femmine <- subset(dati_sorgenti, Sesso=='F')
+
+media_femmine <- mean(dati_femmine$Lunghezza)
+t.test(dati_maschi$Lunghezza,mu=media_femmine,conf.level=0.95)
+```
+<br>
+Nel contesto del t-test, il valore ottenuto per il p-value conferma il rifiuto dell'ipotesi di uguaglianza delle lunghezze tra neonati maschi e femmine.
+<br>
+Proviamo a vedere anche la rispettiva dimensione del cranio:<br>
+```{r , include=TRUE}
+boxplot(Cranio~Sesso)
+```
+<br>
+In questo caso siamo piu vicini tra i due sessi anche se nei maschi si nota anche in tale variabile una dimensione leggermente superiore.<br>
+<br><br>
+
+Riproviamo anche qui l'evidenza con il t-test:
+
+
+```{r , include=TRUE}
+dati_maschi <- subset(dati_sorgenti, Sesso=='M')
+dati_femmine <- subset(dati_sorgenti, Sesso=='F')
+
+media_femmine <- mean(dati_femmine$Cranio)
+t.test(dati_maschi$Cranio,mu=media_femmine,conf.level=0.95)
+```
+<br>
+Si conferma anche con il t-test la differenza in media delle dimensioni del cranio tra neonati maschi e neonati femmine.<br>
+<br><br>
+
+### 6 - Verifichiamo se in alcuni ospedali vengono eseguiti in maggioranza parti cesarei rispetto ad altri:<br><br>
+
+Iniziamo filtrando il dataset per i parti cesarei e procediamo creando un istogramma che illustra la distribuzione.<br> Utilizzeremo gli ospedali sull'asse delle ascisse (x) e il numero di parti cesarei sull'asse delle ordinate (y):<br><br>
+
+```{r , include=TRUE}
+library(dplyr)
+df_cesarei <- dati_sorgenti %>% filter(Tipo.parto=="Ces") %>%select(Tipo.parto,Ospedale)
+
+library(ggplot2)
+ggplot(data = df_cesarei)+
+  geom_bar(aes(x=Ospedale),
+           stat="count",
+           col="black",
+           fill="blue")+
+  labs(title="Distrib. parti cesarei su ospedali",x="Ospedali",y="Num Parti cesarei")
+```
+<br><br>
+Come si può notare dal grafico, nel secondo ospedale sembra essere registrato un numero maggiore di casi rispetto agli ospedali 1 e 3.<br>
+Andiamo adesso a provare con il test chi-quadro se sussistono prove statisticamente significative che determinati tipi di parto vengono eseguiti in determinati ospedali:
+<br><br>
+
+```{r , include=TRUE}
+
+# Creazione della tabella di contingenza
+tabella_contingenza <- table(df_cesarei$Ospedale, df_cesarei$Tipo.parto)
+chisq.test(tabella_contingenza)
+```
+
+<br>
+Dall'evidenza mostrata non ci sono prove statisticamente significative che suggeriscano un'associazione tra il tipo di parto e l'ospedale, considerando i dati nel dataset.<br>
+Un p-value alto come 0.6 suggerisce che le differenze osservate nelle frequenze dei tipi di parto tra gli ospedali potrebbero essere attribuite al caso o alla variabilità casuale piuttosto che a una reale associazione tra il tipo di parto e l'ospedale.
+<br><br><br><br>
+
+## Analisi Multidimensionale e implementazione del modello di previsione <br><br>
+
+Cominciamo la creazione del nostro modello previsionale analizzando coppie di variabili una alla volta. Procederemo passo dopo passo, valutando la validità del modello appena costruito per ottenere previsioni significative sulla variabile "peso", che è al centro del nostro studio.<br>
+
+### 1 - Analisi di indagine sulle relazioni tra le variabili a coppie in riferimento alla variabile risposta del "peso"  <br>
+
+Iniziamo a vedere la correlazione tra il peso ed il periodo di Gestazione:<br>
+
+```{r , include=TRUE}
+plot(Gestazione,Peso,pch=20)
+```
+<br>
+Dall'andamento della nuvola dei punti sicuramente la variabile Gestazione risulta correlata al peso del neonato; la tendenza risulta quindi lineare positiva ovvero all'aumentare del numero di settimane di Gestazione aumenta il peso del neonato stesso.<br>
+Possiamo dimostrarlo matematicamente secondo quanto di seguito riportato dalla funzione cor() in R:<br>
+
+```{r}
+cor(Gestazione,Peso)
+``` 
+
+<br>
+L'indice indica che esiste una correlazione positiva.<br>
+Proviamo adesso a vedere la variabile riferita agli "Anni della madre":<br>
+```{r}
+cor(Anni.madre,Peso)
+``` 
+ <br>
+Come possiamo vedere il valore è tendente allo zero pertanto la funzione ci indirizza verso un assenza di correlazione alla variabile target "peso" del neonato.<br>
+Verifichiamo adesso se esiste correlazione con il numero di gravidanze:<br>
+```{r}
+cor(N.gravidanze,Peso)
+```
+<br> Anche in questo caso l'indice conferma assenza di correlazione.<br>
+Passiamo allo step di verifica di correlazione tra il "Peso" e lo status di madri Fumatrici:<br>
+```{r}
+cor(Fumatrici,Peso)
+```
+
+<br> L'indice conferma assenza di correlazione anche tra questa coppia di variabili. <br>
+Ad integrazione verifichiamolo eseguendo anche un t-test per determinare se esistono differenze statistiche significative nei pesi tra neonati di madri fumatrici e non fumatrici :<br>
+
+```{r}
+# Esempio di test t per confrontare le medie dei due gruppi
+t.test(Peso ~ Fumatrici, data = dati_sorgenti)
+```
+<br>
+Come possiamo vedere un p-value pari a 0.30 suggerisce che, statisticamente, non ci sono prove significative per affermare che ci siano differenze sostanziali nei pesi dei neonati tra i due gruppi di madri (fumatrici e non) nel campione analizzato confermando l'assenza di correlazione tra madre fumatrice e non e relativo peso del neonato.<br><br>
+Vediamo una correlazione adesso con la variabile Tipo.parto:<br>
+```{r}
+Tipo.parto_num <- ifelse(Tipo.parto == "Nat",0,1)
+cor(Tipo.parto_num,Peso)
+```
+<br>
+Proviamo anche qui ad analizzare l'associazione con la variabile Tipo.parto anche tramite t-test:<br>
+```{r}
+t.test(Peso ~ Tipo.parto, data = dati_sorgenti)
+```
+<br>
+Anche in questo caso il t-test ci dice che non ci sono prove statisticamente significative per poter affermare che ci siano differenze sostanziali nei pesi dei neonati tra i due gruppi (cesareo e naturale) nel campione considerato.<br>
+
+Se invece prendiamo in considerazione le variabili di osservazione sul neonato, possiamo notare una correlazione dimostrabile con le variabili antropometriche come il cranio e la lunghezza del neonato.:<br>
+
+```{r}
+cor(Cranio,Peso)
+cor(Lunghezza,Peso)
+```
+<br>
+
+Per valutare le correlazioni tra le variabili di un dataframe in R, è possibile eseguire un'analisi tramite una singola chiamata diretta sul dataframe stesso della funzione "cor", filtrando opportunamente i campi non rappresentativi per lo studio. :<br>
+
+```{r}
+df_filter <- dati_sorgenti %>% select(Anni.madre,
+                                      N.gravidanze,
+                                      Fumatrici,
+                                      Gestazione,
+                                      Lunghezza,
+                                      Cranio,
+                                      Peso)
+cor(df_filter)
+```
+<br>
+Come è evidente, le variabili con un indice di correlazione significativo spiccano chiaramente dalle altre quando si osserva la colonna del peso utilizzando questa prospettiva.<br>
+<br>
+
+### 2 - Creazione del modello di regressione lienare multipla con tutte le variabili:  <br><br>
+
+Procediamo ora alla costruzione del nostro modello di regressione lineare multipla, includendo tutte le variabili che abbiamo individuato come correlate (anche se minimamente) con la nostra variabile target "Peso".<br><br>
+
+Le variabili che risultano significative sono:<br><br>
+
+- Gestazione<br>
+- Lunghezza<br>
+- Cranio<br>
+- Sesso (trasformato in variabile dummy 0-1 per Femmine e Maschi, rispettivamente)<br><br>
+
+Andiamo avanti costruendo il nostro modello di regressione lineare utilizzando queste variabili.<br><br>
+
+```{r}
+sesso_num <- ifelse(Sesso == "F",0,1)
+dati_sorgenti$sesso_num <- sesso_num
+
+df_lm <- dati_sorgenti[, c("Peso", "Gestazione", "Lunghezza", "Cranio", "sesso_num")]
+
+mod1 <- lm(Peso ~ Gestazione + Lunghezza + Cranio + sesso_num ,data = df_lm) 
+summary(mod1)
+```
+<br>
+
+La chiamata a `summary()` ci fornisce le stime dei "Coefficienti" associati alle variabili nel nostro modello "mod1". Ad esempio, per ogni settimana aggiuntiva di gestazione, il peso del neonato aumenta di circa 31 grammi. Lo stesso vale per la variabile "Lunghezza", dove ogni millimetro aggiuntivo si traduce in un aumento del peso di circa 10 grammi, e così via.<br><br>
+
+L'R quadro, intorno al 72,6%, rappresenta un indicatore della validità del nostro modello lineare, ed è confermato anche dall'R quadro aggiustato, che si attesta intorno al 72,5%. <br>Questi valori indicano quanto le variabili nel modello spieghino la variazione nel peso del neonato.<br><br>
+
+### 3 - Ricercare il modello lineare "migliore" per la variabile Target:  <br><br>
+
+Per ricercare il modello migliore utilizzeremo la procedura Stepwise che consiste nell'aggiungere o togliere le variabili una per volta e valutare passo dopo passo i risultati ottenuti.<br>
+Nel nostro caso partendo dal modello che ingloba tutte le variabili che hanno rilevato un minimo di correlazione con la variabile Target vedremo quali tra esse possiamo eliminare per arrivare ad avere un modello quanto piu semplice possibile che abbia il minor numero di variabili con un R Quadro stabile o se non addirittura piu alto.<br>
+
+Ripartiamo con elencare le variabili utilizzate nel nostro modello che riguardano:
+
+ - Gestazione<br>
+ - Lunghezza<br>
+ - Cranio<br>
+ - Sesso (convertito in dummy 0-1 per Femmine e Maschi rispettivamente)<br><br>
+ 
+Procediamo a togliere la variabile "Cranio", creandoci il modello `mod2`.
+
+```{r}
+mod2 <- update(mod1,~.-Cranio)
+summary(mod2)
+``` 
+<br>
+In questo caso, se confrontiamo il modello "mod2" con il "mod1", notiamo che il "mod2" avrebbe una diminuzione nell'R², indicando una perdita di affidabilità. <br> Per comprendere l'impatto della variabile "Lunghezza", procediamo eliminandola e osservando come ciò influisca sull'R², creando il modello "mod3":
+
+```{r}
+mod3 <- update(mod1,~.-Lunghezza)
+summary(mod3)
+``` 
+<br> 
+Questa conferma anche in questo caso una diminuzione dell'affidabilità del modello.<br>
+
+Riproviamo lo stesso per la variabile "sesso_num" che abbiamo definito in modalità dummy andandoci a creare il modello "mod4" :<br>
+
+```{r}
+mod4 <- update(mod1,~.-sesso_num)
+summary(mod4)
+``` 
+<br>
+Nel caso in cui la variabile "sesso_num" venga rimossa dal modello, si osserva una lieve diminuzione dell'affidabilità del modello.<br>
+<br>
+Proviamo infine con la eliminazione dal modello della variabile "Gestazione" :<br>
+
+```{r}
+mod5 <- update(mod1,~.-Gestazione)
+summary(mod5)
+``` 
+<br>
+Se decidessimo di eliminare la variabile "Gestazione", anche qui seppur in misura ridotta, si verificherebbe una diminuzione dell'affidabilità del modello.
+Il modello pertanto piu affidabile risulterebbe essere il modello di partenza ovvero il mod1.<br>
+<br>
+Prossimo passo: procediamo con l'analisi utilizzando i criteri dell'AIC e del BIC per approfondire questa ipotesi. Secondo questi strumenti, il modello che presenta il valore più basso sarebbe da considerarsi preferibile in termini di adeguatezza e complessità.<br>
+
+```{r}
+AIC(mod1,mod2,mod3,mod4,mod5)
+BIC(mod1,mod2,mod3,mod4,mod5)
+``` 
+
+<br>
+<br>
+Il modello originale (mod1) presenta un miglior coefficiente di determinazione (R²) sia utilizzando l'AIC che il BIC confermando la nostra ipotesi che tale modello sia il migliore.<br><br>
+Proviamo adesso ad utilizzare la funzione prevista in R che mi ricerca lei il modello migliore: la funzione stepAIC. <br>
+Il suo obiettivo principale è aiutare nella costruzione del miglior modello possibile, esplorando una serie di modelli inclusi o esclusi di variabili. Il processo avviene in modo iterativo, aggiungendo o eliminando una variabile alla volta e valutando come ciò influenzi il criterio di informazione del modello (AIC o BIC); quello che farà la funzione sarebbe dunque l'automazione di quello che abbiamo appena mostrato manualmente in pratica:
+
+```{r}
+library(MASS)
+stepwise.mod <- MASS::stepAIC(mod1,direction="both",k=2)
+summary(stepwise.mod)
+``` 
+<br>Sembra che anche secondo questa metodologia, il modello migliore sia `mod1`, poiché offre il miglior contributo all'R quadro utilizzando il minor numero di variabili.<br><br>
+
+Utilizzeremo quindi `mod1` come modello definitivo.<br><br>
+
+### 4 - Verifica interazioni o effetti non lineari:  <br><br>
+
+In questo passaggio, esamineremo se ci sono interazioni rilevanti tra le variabili scelte per il modello "mod1".<br>
+Per fare ciò, rappresenteremo le interazioni tra di esse con l'implementazione del modello "mod6" indicato di seguito.:
+
+```{r}
+mod6 <- update(mod1,~.+Lunghezza*sesso_num 
+                       + Cranio*sesso_num 
+                       + Gestazione*sesso_num 
+                       + Lunghezza*Cranio 
+                       + Lunghezza*Gestazione 
+                       + Gestazione*Cranio)
+summary(mod6)
+``` 
+<br>
+Utilizzando summary(mod6), si puo' valutare la significatività delle interazioni guardando i risultati ottenuti dai p-values associati ai coefficienti delle interazioni in quanto se il p-value associato a una particolare interazione è inferiore al livello di significatività , potrebbe indicare che quella specifica interazione è significativa nel modello.<br><br>
+Tra le sei tipologie di interazioni considerate nel modello "mod6", sembra che l'interazione più significativa coinvolga le variabili "Gestazione e Cranio". Proviamo quindi a sviluppare un modello, denominato "mod7", che includa solamente questa interazione per valutare il suo impatto sull'affidabilità previsionale del modello.<br>
+
+```{r}
+mod7 <- update(mod1,~.+Gestazione*Cranio)
+summary(mod7)
+``` 
+<br>
+L'incremento minimo nell'R² con l'aggiunta di un'altra variabile sembra suggerire che l'ipotesi di includere l'interazione nel modello potrebbe non essere plausibile, poiché non sembra essere rilevante in modo significativo.<br>
+<br>
+
+<br>
+<br>
+
+### 5 - Diagnostica approfondita dei residui del modello e di potenziali valori influenti:  <br><br>
+
+A partire dal modello scelto, "mod1", procediamo con l'analisi dei residui, i quali dovrebbero mostrare le seguenti caratteristiche:<br><br>
+
+- Normalità <br>
+- Omoschedasticità <br>
+- Incorrelazione<br>
+- Media zero<br><br>
+
+Iniziamo con il test di Shapiro-Wilk per verificare se i residui seguono una distribuzione normale.<br><br>
+ 
+```{r}
+residui <- residuals(mod1)
+shapiro.test(residui)
+``` 
+
+<br>
+Andiamo a vedere il confronto da un punto di vista grafico :<br>
+
+```{r}
+qqnorm(residui)
+qqline(residui)
+``` 
+<br>
+Dai punti disposti lungo la linea bisettrice nel grafico, sembra che i residui seguano effettivamente una distribuzione normale. <br>Osserviamo direttamente il grafico di densità per vedere come la curva dei residui si avvicina alla distribuzione normale.
+
+```{r}
+plot(density(residuals(mod1)))
+``` 
+<br>
+
+Andiamo ora a vedere il test di omoschedasticità ; per farlo utilizzeremo il test di Breusch-Pagan tramite la funzione R "btest" :<br>
+
+```{r}
+library(lmtest)
+bptest(mod1)
+``` 
+<br>
+Questo test produce un valore p che, se inferiore al livello di significatività, suggerisce la presenza di eteroschedasticità nei residui. <br>Al contrario, se il valore p risulta essere maggiore, indicherebbe una natura omoschedastica dei residui. <br><br>Esploriamo questa caratteristica anche graficamente per una comprensione più approfondita. <br>:
+
+```{r}
+plot(fitted(mod1),residui)
+``` 
+<br> 
+In questo contesto, i numeri dovrebbero distribuirsi intorno allo zero.<br><br>
+
+L'osservazione di una nuvola di punti concentrati attorno allo zero nel grafico dei residui rispetto ai valori predetti potrebbe suggerire che, in generale, i residui non mostrano una chiara eteroschedasticità. Tuttavia, l'esito negativo del test di Breusch-Pagan potrebbe essere causato dalla presenza di alcuni outlier che influenzano la varianza dei residui.<br><br>
+
+Per indagare ulteriormente, possiamo analizzare la presenza di tali outlier utilizzando la "Distanza di Cook". Essa ci permette di individuare specifici casi che influenzano in modo significativo il modello.<br>
+<br>
+
+```{r}
+cook <- cooks.distance(mod1)
+plot(cook)
+``` 
+ <br>
+ Come possiamo vedere abbiamo individuato un outlier ; proviamo a definire quanto è la sua distanza di cook :<br>
+```{r}
+max(cook)
+``` 
+ 
+<br>
+Cerchiamo di individuare adesso l'outlier :<br>
+```{r}
+cook_d <- cooks.distance(mod1)
+indice_outlier <- which.max(cook_d)
+print(indice_outlier)
+``` 
+ 
+<br>
+Proviamo adesso ad eliminarlo, procedere dunque al ricaricamento del dataset bonificato e infine al ricalcolo del modello aggiornato secondo quanto sotto riportato :<br>
+```{r}
+dati_senza_outlier <- dati_sorgenti[-indice_outlier,] #rimuovo il valore anomalo
+attach(dati_senza_outlier)
+sesso_num <- ifelse(Sesso == "F",0,1)
+dati_senza_outlier$sesso_num <- sesso_num
+mod1 <- lm(Peso ~ Gestazione 
+           + Lunghezza 
+           + Cranio 
+           + sesso_num ,data = dati_senza_outlier) 
+library(lmtest)
+bptest(mod1)
+``` 
+<br>
+Ora il pvalue risulta leggermente superiore al livello di significatività quindi siamo in omoschedasticità.<br>
+
+Andiamo ora a vedere che non esista alcuna condizione di correlazione tra i residui:<br>
+
+```{r}
+plot(residui)
+``` 
+<br>
+Analogamente andiamo ad effettuare il test di Durbin-Watson tramite la funzione in R dwtest():<br>
+
+```{r}
+library(lmtest)
+dwtest(mod1)
+``` 
+
+<br>
+In questo caso il test di Durbin-Watson indica che il valore p è superiore al livello di significatività quindi gli stessi non sono autocorrelati pertanto il modello supera anche la condizione di autocorrelazione.
+
+<br> 
+Infine vediamo il test se la media dei residui è vicino allo 0:<br>
+
+
+```{r}
+mean(residui)
+``` 
+
+<br> 
+Anche in questo caso il test viene superato nella diagnostica.
+A questo punto possiamo affermare che la diagnosi risulta superata nei punti indicati per il modello mod1 prescelto.
+
+<br>
+<br>
+
+### 6 - Considerazioni sulla bontà del modello:  <br><br>
+
+Il modello che abbiamo sviluppato mostra un R quadro del 72%, il che indica una misura ragionevole di affidabilità. È rassicurante notare che supera con successo la diagnosi dei residui, confermando la sua capacità predittiva complessiva.
+<br><br>
+Possiamo esaminare i controlli principali relativi alla diagnosi dei residui appena eseguita utilizzando la seguente chiamata:<br>
+
+```{r}
+par(mfrow=c(2,2))
+plot(mod1)
+``` 
+
+<br>
+<br>
+
+### 7 - Previsione del peso di una neonata, in considerazione della madre alla terza gravidanza, e gestazione alla 39esima settimana:  <br><br>
+
+Come abbiamo visto il N.gravidanze non è variabile correlata al peso ma le altre due ne hanno confermato la correlazione. Utilizzeremo dunque la funzione predict in R per utilizzare il nostro modello "mod1" a fare inferenza per la previsione richiesta :<br>
+
+```{r}
+predict(mod1, newdata = data.frame(Gestazione=39, sesso_num=0, Cranio=340, Lunghezza=494))
+``` 
+ <br>
+Abbiamo utilizzato il valore medio del dataset per "Cranio" e "Lunghezza" nel nostro modello per non influenzare le previsioni.
+<br><br>
+Secondo il modello costruito, il peso previsto in grammi per una neonata nata da madre alla 39ª settimana è di 3237g.
+
+<br>
+<br>
+
+### 8 - Rappresentazione grafica del modello realizzato:  <br><br>
+
+Proviamo a rappresentare il modello nelle variabili principali da un punto di vista grafico :<br>
+
+```{r}
+library(ggplot2)
+ggplot(data=dati_sorgenti)+
+  geom_point(aes(x=Gestazione,
+                 y=Peso,
+                 col=Sesso), position="jitter")+
+  geom_smooth(aes(x=Gestazione,
+                 y=Peso,
+                 col=Sesso) , method="lm")
+``` 
+<br>
+
+Come si può notare dal grafico, c'è una differenza nel peso dei neonati in base al sesso, con un aumento tendenziale del peso all'aumentare della "Gestazione". Come osservato, il numero più frequente di settimane di gestazione è 39, come evidenziato nel grafico. La "Gestazione" mostra una correlazione lineare con il peso, mentre il sesso aggiunge un ulteriore aspetto alla correlazione con il peso del neonato.
